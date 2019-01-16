@@ -1,0 +1,23 @@
+{
+  "name": "search-based-javascript",
+  "version": "1.0.0",
+  "description": "Study of metaheuristic search techniques used for otimization problems",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fabianorodrigo/search-based-javascript.git"
+  },
+  "keywords": [
+    "Search-based",
+    "otimization"
+  ],
+  "author": "Fabiano Nascimento",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fabianorodrigo/search-based-javascript/issues"
+  },
+  "homepage": "https://github.com/fabianorodrigo/search-based-javascript#readme"
+}
