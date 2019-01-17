@@ -4,6 +4,7 @@
   "description": "Study of metaheuristic search techniques used for otimization problems",
   "main": "index.js",
   "scripts": {
+    "start": "node .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -19,5 +20,11 @@
   "bugs": {
     "url": "https://github.com/fabianorodrigo/search-based-javascript/issues"
   },
-  "homepage": "https://github.com/fabianorodrigo/search-based-javascript#readme"
+  "homepage": "https://github.com/fabianorodrigo/search-based-javascript#readme",
+  "dependencies": {
+    "bunyan": "^1.8.12",
+    "bunyan-rotating-file-stream": "^1.6.3",
+    "colors": "^1.3.3",
+    "readline-sync": "^1.4.9"
+  }
 }

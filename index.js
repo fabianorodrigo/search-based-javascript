@@ -1,8 +1,8 @@
 var EventEmitter = require("events").EventEmitter;
 
 const readlineSync = require("readline-sync");
-const Moment = require('moment');
 const colors = require("colors");
+const fs = require("fs");
 const bunyan = require('bunyan');
 const RotatingFileStream = require('bunyan-rotating-file-stream');
 
@@ -26,6 +26,9 @@ const logOptions = {
     }]
 };
 
+if (!fs.existsSync("./logs")) {
+    fs.mkdirSync("./logs");
+}
 
 global.log = bunyan.createLogger(logOptions);
 
@@ -64,18 +67,17 @@ console.log(lineGraph.yellow);
 const initState = ['B', 'C', 'D', 'A'];
 const goalState = ['A', 'B', 'C', 'D'];
 
-const solutionSequence = HillClimbing.getRouteWithHillClimbing(initState, goalState);
-
-solutionSequence.forEach(solution => {
-    console.log('-'.padStart(WIDTH, '-'));
-    solution.state.forEach(stack => {
-        while (stack.length > 0) {
-            console.log(stack.pop());
-        }
-        console.log('-');
+HillClimbing.getRouteWithHillClimbing(initState, goalState).then(solutionSequence => {
+    solutionSequence.forEach(solution => {
+        console.log('-'.padStart(WIDTH, '-'));
+        solution.state.forEach(stack => {
+            while (stack.length > 0) {
+                console.log(stack.pop());
+            }
+            console.log('-');
+        })
     })
-})
-
+});
 
 //ee.emit("findFolderEvent");
 const intervalApp = setInterval(() => { }, 10000);
