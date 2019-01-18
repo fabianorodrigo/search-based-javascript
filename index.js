@@ -49,7 +49,7 @@ process.on('uncaughtException', (err) => {
 });
 
 
-const WIDTH = 150;
+const WIDTH = 100;
 global.trace = true;
 
 

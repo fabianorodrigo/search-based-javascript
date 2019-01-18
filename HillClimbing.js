@@ -80,14 +80,14 @@ const HillClimbing = {
     getHeuristicsValue: async function (currentSolution, goalSolution) {
         let hv = null;
         try {
-            hv = await currentSolution.map(async stack => {
+            hv = await Promise.all(currentSolution.map(stack => {
                 if (trace) console.log('getHeuristicsValue.map.stack'.green, stack);
                 try {
-                    return await HillClimbing.getHeuristicsValueForStack(stack, currentSolution, goalSolution);
+                    return HillClimbing.getHeuristicsValueForStack(stack, currentSolution, goalSolution);
                 } catch (e) {
                     console.error(e)
                 }
-            });
+            }));
         } catch (e) {
             console.error(e);
         }
