@@ -68,15 +68,19 @@ const initState = ['B', 'C', 'D', 'A'];
 const goalState = ['A', 'B', 'C', 'D'];
 
 HillClimbing.getRouteWithHillClimbing(initState, goalState).then(solutionSequence => {
-    solutionSequence.forEach(solution => {
+    console.log('index.getRouteWithHillClimbing.then.solutionSequence'.green, JSON.stringify(solutionSequence));
+    solutionSequence.forEach(state => {
+        if(!State.isState(state)) throw new Error(`Solution sequence is not a State: ${JSON.stringify(state)}`)
         console.log('-'.padStart(WIDTH, '-'));
-        solution.state.forEach(stack => {
+        state.state.forEach(stack => {
             while (stack.length > 0) {
                 console.log(stack.pop());
             }
             console.log('-');
         })
-    })
+    });
+
+    clearInterval(intervalApp);
 });
 
 //ee.emit("findFolderEvent");

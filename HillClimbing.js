@@ -3,7 +3,7 @@
 const State = require("./State");
 const Utils = require("./Utils");
 
-const TRACE = true;
+const TRACEALL = false;
 
 const HillClimbing = {
 
@@ -14,7 +14,6 @@ const HillClimbing = {
 
     heuristics: 0,
 
-
     /**
     * Generate a new state/solution of type X
     *
@@ -22,33 +21,39 @@ const HillClimbing = {
     * @param {*} goalSolution The optimum solution desired
     */
     getRouteWithHillClimbing: async function (initSolution, goalSolution) {
-
+        const TRACE = true;
+        let budget = 5;
         return new Promise(async (resolve, reject) => {
             const initStateStackList = [];
             initStateStackList.push(initSolution);
             let iniStateHeuristics = await HillClimbing.getHeuristicsValue(initStateStackList, goalSolution);
-            if (trace) console.log('getRouteWithHillClimbing.iniStateHeuristics'.green, iniStateHeuristics);
+            if (TRACEALL || TRACE) console.log('getRouteWithHillClimbing.iniStateHeuristics'.green, iniStateHeuristics);
 
-            const initState = State(initStateStackList, iniStateHeuristics);
-            if (trace) console.log('getRouteWithHillClimbing.initState'.green, initState);
+            const initState = State.newState(initStateStackList, iniStateHeuristics);
+            if (TRACEALL || TRACE) console.log('getRouteWithHillClimbing.initState'.green, initState);
             const resultPath = [];
             resultPath.push(initState); //checar
 
             let currentState = initState;
             let noStateFound = false;
-            if (trace) console.log('getRouteWithHillClimbing.currentState.state[0]'.green, currentState.state[0]);
-            if (trace) console.log('getRouteWithHillClimbing.currentState.state[0] == goalSolution'.green, currentState.state[0] == goalSolution);
-            while (!currentState.state[0] == goalSolution || noStateFound) {
+            if (TRACEALL || TRACE) console.log('getRouteWithHillClimbing.currentState.state[0]'.green, currentState.state[0]);
+            if (TRACEALL || TRACE) console.log('getRouteWithHillClimbing.currentState.state[0] != goalSolution'.green, currentState.state[0] == goalSolution);
+            if (TRACEALL || TRACE) console.log('getRouteWithHillClimbing.currentState.state[0] != goalSolution || noStateFound'.green, !currentState.state[0] == goalSolution || noStateFound);
+            while (budget > 0 && (currentState.state[0] != goalSolution || noStateFound)) {
+                if (TRACEALL || TRACE) console.log('getRouteWithHillClimbing.while.START'.green);
                 noStateFound = true;
                 const nextState = await HillClimbing.findNextState(currentState, goalSolution);
+                if (TRACEALL || TRACE) console.log('getRouteWithHillClimbing.while.nextState'.green, nextState);
                 if (nextState != null) {
                     noStateFound = false;
                     currentState = nextState;
-                    resultPath.add(nextState);
+                    resultPath.push(nextState);
+                } else {
+                    budget--;
                 }
             }
 
-            if (trace) console.log('getRouteWithHillClimbing.return'.green, resultPath);
+            if (TRACEALL || TRACE) console.log('getRouteWithHillClimbing.return'.green, resultPath);
             resolve(resultPath);
         })
     },
@@ -61,13 +66,16 @@ const HillClimbing = {
      * @param {*} goalSolution The optimum solution desired
      */
     findNextState: async function (currentState, goalSolution) {
+        const TRACE = false;
+        if (!State.isState(currentState)) throw new Error(`The argument 'currentState' must be an State: ${JSON.stringify(currentState)}`);
+        if (!Array.isArray(goalSolution)) throw new Error(`The argument 'goalSolution' must be an Array`);
         const listOfStacks = currentState.state;
         let currentStateHeuristics = currentState.heuristics;
 
-        const resultOperations = listOfStacks.map(async stack => {
-            HillClimbing.applyOperationsOnState(listOfStacks, stack, currentStateHeuristics, goalSolution);
-        });
-
+        const resultOperations = await Promise.all(listOfStacks.map((stack, indexStack) => {
+            return HillClimbing.applyOperationsOnState(listOfStacks, indexStack, currentStateHeuristics, goalSolution);
+        }));
+        if (TRACEALL || TRACE) console.log('findNextState.resultOperations'.green, resultOperations);
         return resultOperations[0];
     },
 
@@ -78,12 +86,13 @@ const HillClimbing = {
      * @param {*} goalSolution The optimum solution desired
      */
     getHeuristicsValue: async function (currentSolution, goalSolution) {
+        const TRACE = false;
         let hv = null;
         try {
             hv = await Promise.all(currentSolution.map(stack => {
-                if (trace) console.log('getHeuristicsValue.map.stack'.green, stack);
+                if (TRACEALL || TRACE) console.log('getHeuristicsValue.map.stack'.green, stack);
                 try {
-                    return HillClimbing.getHeuristicsValueForStack(stack, currentSolution, goalSolution);
+                    return HillClimbing.getHeuristicsValueForStack(stack, goalSolution);
                 } catch (e) {
                     console.error(e)
                 }
@@ -91,8 +100,8 @@ const HillClimbing = {
         } catch (e) {
             console.error(e);
         }
-        //hv = hv.reduce(HillClimbing.add, 0);
-        if (trace) console.log('getHeuristicsValue.hv'.green, hv);
+        hv = hv.reduce(HillClimbing.add, 0);
+        if (TRACEALL || TRACE) console.log('getHeuristicsValue.hv'.green, hv);
         return hv;
     },
 
@@ -100,22 +109,33 @@ const HillClimbing = {
         return a + b;
     },
 
-    getHeuristicsValueForStack: async function (stack, currentSolution, goalSolution) {
+    /***
+     * Returns heuristics value for a particular Stack
+     * 
+     * @param {Array} stack The stack which heuristics value will be calculated
+     * @param {Array} goalSolution The stack that represents the best solution
+     * @returns {number} The Heuristics value
+     */
+    getHeuristicsValueForStack: async function (stack, goalSolution) {
+        const TRACE = false;
+        if (!Array.isArray(stack)) throw new Error('The stack argument must be an Array');
+        if (!Array.isArray(goalSolution)) throw new Error('The goalSolution argument must be an Array');
         let stackHeuristics = 0;
         let isPositionedCorrect = true;
         let goalStartIndex = 0;
-        if (trace) console.log('getHeuristicsValueForStack.beforeForEach'.green);
-        await stack.forEach(async currentBlock => {
-            if (trace) console.log('getHeuristicsValueForStack.forEach.currentBlock'.green, currentBlock);
+        for (let i = 0; i < stack.length; i++) {
+            const currentBlock = stack[i];
+            if (TRACEALL || TRACE) console.log('getHeuristicsValueForStack.forEach.currentBlock'.green, currentBlock);
             if (isPositionedCorrect && currentBlock == goalSolution[goalStartIndex]) {
                 stackHeuristics += goalStartIndex;
             } else {
                 stackHeuristics -= goalStartIndex;
                 isPositionedCorrect = false;
             }
+            if (TRACEALL || TRACE) console.log('getHeuristicsValueForStack.forEach.stackHeuristics'.green, stackHeuristics);
             goalStartIndex++;
-        });
-        if (trace) console.log('getHeuristicsValueForStack.stackHeuristics'.green, stackHeuristics);
+        }
+        if (TRACEALL || TRACE) console.log('getHeuristicsValueForStack.stackHeuristics returned'.green, stackHeuristics);
         return stackHeuristics;
     },
 
@@ -123,58 +143,93 @@ const HillClimbing = {
     * Generate a new state/solution of type X
     *
     * @param {*} currentSolution Current better solution to be improved
-    * @param {*} input Input to generate a next solution
+    * @param {Number} indexStack Index of the Input stack to generate a next solution in the currentSolution
     * @param {Number} currentHeuristics The current value of heuristics
     * @param {*} goalSolution The optimum solution desired
     */
-    applyOperationsOnState: function (currentSolution, input, currentHeuristics, goalSolution) {
+    applyOperationsOnState: async function (currentSolution, indexStack, currentStateHeuristics, goalSolution) {
+        const TRACE = false;
+        if (!Array.isArray(currentSolution) || !Array.isArray(currentSolution[0])) throw new Error(`The argument 'currentSolution' must be an Array of Arrays`);
+        if (!Array.isArray(currentSolution[indexStack])) throw new Error(`The argument 'currentSolution[indexStack]' must be an Array`);
+        if (!Array.isArray(goalSolution)) throw new Error(`The argument 'goalSolution' must be an Array`);
         let tempState = null;
-        const tempSolution = currentSolution.clone();
-        let block = input.pop();
-        if (input.length == 0) {
-            console.log('tempSolution pre remove', tempSolution);
-            Utils.removeArrayItem(tempSolution, input);
-            console.log('tempSolution pos remove', tempSolution);
+        let tempSolution = State.cloneStackList(currentSolution);
+        if (TRACEALL || TRACE) console.log('applyOperationsOnState.tempSolution'.green, tempSolution);
+        if (TRACEALL || TRACE) console.log('applyOperationsOnState.currentSolution[indexStack]'.green, currentSolution[indexStack]);
+        let block = tempSolution[indexStack].pop();
+        if (TRACEALL || TRACE) console.log('applyOperationsOnState.block'.green, block);
+        if (tempSolution[indexStack].length == 0) {
+            tempSolution = await Utils.removeArrayItem(tempSolution, tempSolution[indexStack]);
         }
-        tempState = HillClimbing.pushElementToNewStack(tempSolution, block, currentStateHeuristics, goalSolution);
+        if (TRACEALL || TRACE) console.log('applyOperationsOnState.tempSolution'.yellow, tempSolution);
+        tempState = await HillClimbing.pushElementToNewStack(tempSolution, block, currentStateHeuristics, goalSolution);
+        if (TRACEALL || TRACE) console.log('applyOperationsOnState.tempState'.green, tempState);
         if (tempState == null) {
-            tempState = HillClimbing.pushElementToExistingStacks(stack, tempSolution, block, currentStateHeuristics, goalSolution);
+            tempState = HillClimbing.pushElementToExistingStacks(currentSolution[indexStack], tempSolution, block, currentStateHeuristics, goalSolution);
         }
         if (tempState == null) {
-            stack.push(block);
+            tempSolution[indexStack].push(block);
         }
         return tempState;
     },
 
-    pushElementToNewStack: function (stackList, block, currentStateHeuristics, goalSolution) {
+    pushElementToNewStack: async function (stackList, block, currentStateHeuristics, goalSolution) {
+        const TRACE = false;
+        if (!Array.isArray(stackList)) throw new Error(`The argument 'stackList' must be an Array: ${JSON.stringify(stackList)}`);
+        if (!Array.isArray(goalSolution)) throw new Error(`The argument 'goalSolution' must be an Array`);
         let newState = null;
         const newStack = [];
         newStack.push(block);
 
         stackList.push(newStack);
-        const newStateHeuristics = HillClimbing.getHeuristicsValue(stackList, goalSolution);
+        if (TRACEALL || TRACE) console.log('pushElementToNewStack.stackList'.yellow, stackList);
+        const newStateHeuristics = await HillClimbing.getHeuristicsValue(stackList, goalSolution);
+        if (TRACEALL || TRACE) console.log('pushElementToNewStack.newStateHeuristics'.green, newStateHeuristics);
         if (newStateHeuristics > currentStateHeuristics) {
-            newState = State(stackList, newStateHeuristics);
+            newState = State.newState(stackList, newStateHeuristics);
         } else {
-            Utils.removeArrayItem(stackList, newStack);
+            stackList = await Utils.removeArrayItem(stackList, newStack);
         }
         return newState;
     },
 
-    pushElementToExistingStacks: function (currentStack, currentStackList, block, currentStateHeuristics, goalSolution) {
-        const newState = currentStackList.filter(stack => stack != currentStack).map(stack => {
+    pushElementToExistingStacks: async function (currentStack, currentStackList, block, currentStateHeuristics, goalSolution) {
+        const TRACE = true;
+        if (!Array.isArray(currentStack)) throw new Error(`The argument 'currentStack' must be an Array: ${JSON.stringify(currentStack)}`);
+        if (!Array.isArray(currentStackList)) throw new Error(`The argument 'currentStackList' must be an Array: ${JSON.stringify(currentStackList)}`);
+        if (!Array.isArray(goalSolution)) throw new Error(`The argument 'goalSolution' must be an Array`);
+        const newState = await Promise.all(currentStackList.filter(stack => stack != currentStack).map(stack => {
+            if (TRACEALL || TRACE) console.log('pushElementToExistingStacks.filter.map.pushElementsToStack(stack, block, currentStackList, currentStateHeuristics)'.blue, stack, block, JSON.stringify(currentStackList), currentStateHeuristics);
             return HillClimbing.pushElementToStack(stack, block, currentStackList, currentStateHeuristics, goalSolution);
-        });
-        return newState[0];
+        }));
+        if (TRACEALL || TRACE) console.log('pushElementToExistingStacks.newState'.yellow, JSON.stringify(newState));
+        return newState.filter(s=> s!=null)[0];
     },
 
-    pushElementToStack: function (stack, block, currentStackList, currentStateHeuristics, goalSolution) {
+    pushElementToStack: async function (stack, block, currentStackList, currentStateHeuristics, goalSolution) {
+        const TRACE = true;
+        if (!Array.isArray(stack)) throw new Error(`The argument 'stack' must be an Array`);
+        if (!Array.isArray(currentStackList) || !Array.isArray(currentStackList[0])) throw new Error(`The argument 'currentStackList' must be an Array of Arrays`);
+        if (!Array.isArray(goalSolution)) throw new Error(`The argument 'goalSolution' must be an Array`);
+
         stack.push(block);
-        const newStateHeuristics = HillClimbing.getHeuristicsValue(currentStackList, goalSolution);
+        const newStateHeuristics = await HillClimbing.getHeuristicsValue(currentStackList, goalSolution);
+        if (TRACEALL || TRACE) console.log('pushElementToStack.newStateHeuristics / currentStateHeuristics'.green, newStateHeuristics, '/', currentStateHeuristics);
         if (newStateHeuristics > currentStateHeuristics) {
-            return State(currentStackList, newStateHeuristics);
+            if (TRACEALL || TRACE) console.log('pushElementToStack.RETURN'.green, State.newState(currentStackList, newStateHeuristics));
+            return State.newState(currentStackList, newStateHeuristics);
         }
-        stack.pop();
+        const indexStack = currentStackList.findIndex(a => {
+            return a == stack;
+        });
+        if (TRACEALL || TRACE) console.log('pushElementToStack.indexStack'.green, indexStack);
+        if (TRACEALL || TRACE) console.log('pushElementToStack.currentStackList[indexStack].prePOP'.green, currentStackList[indexStack]);
+        if (indexStack > -1) {
+            currentStackList[indexStack].pop();
+        }
+        //stack.pop();
+        if (TRACEALL || TRACE) console.log('pushElementToStack.stack.afterPOP'.green, stack);
+        if (TRACEALL || TRACE) console.log('pushElementToStack.currentStackList[indexStack].afterPOP'.green, currentStackList[indexStack]);
         return null;
     }
 

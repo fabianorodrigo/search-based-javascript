@@ -9,14 +9,16 @@ const Utils = {
     * @param {*} element Element to be removed
     * @return {array} The array up-to-date
     */
-    removeArrayItem: async function (array, element) {
+    removeArrayItem: function (array, element) {
         if (!Array.isArray(array)) throw new Error('First argument must be an Array');
-        const i = await array.findIndex(async (e) => {
-            if (e.toString() == element.toString()) {
+        const i = array.findIndex((e) => {
+            if (e === element) {
                 return true;
             }
         });
-        array.splice(i, 1);
+        if (i > -1) {
+            array.splice(i, 1);
+        }
         return array;
     }
 }

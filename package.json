@@ -25,6 +25,7 @@
     "bunyan": "^1.8.12",
     "bunyan-rotating-file-stream": "^1.6.3",
     "colors": "^1.3.3",
+    "npm": "^6.6.0",
     "readline-sync": "^1.4.9"
   }
 }
