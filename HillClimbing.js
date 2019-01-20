@@ -165,9 +165,12 @@ const HillClimbing = {
         tempState = await HillClimbing.pushElementToNewStack(tempSolution, block, currentStateHeuristics, goalSolution);
         if (TRACEALL || TRACE) console.log('applyOperationsOnState.tempState'.green, tempState);
         if (tempState == null) {
-            tempState = HillClimbing.pushElementToExistingStacks(currentSolution[indexStack], tempSolution, block, currentStateHeuristics, goalSolution);
+            tempState = await HillClimbing.pushElementToExistingStacks(indexStack, tempSolution, block, currentStateHeuristics, goalSolution, currentSolution);
         }
         if (tempState == null) {
+            if(tempSolution[indexStack] == null){
+                tempSolution.push([]);
+            }
             tempSolution[indexStack].push(block);
         }
         return tempState;
@@ -193,21 +196,34 @@ const HillClimbing = {
         return newState;
     },
 
-    pushElementToExistingStacks: async function (currentStack, currentStackList, block, currentStateHeuristics, goalSolution) {
-        const TRACE = true;
-        if (!Array.isArray(currentStack)) throw new Error(`The argument 'currentStack' must be an Array: ${JSON.stringify(currentStack)}`);
-        if (!Array.isArray(currentStackList)) throw new Error(`The argument 'currentStackList' must be an Array: ${JSON.stringify(currentStackList)}`);
+    pushElementToExistingStacks: async function (indexStack, tempStackList, block, currentStateHeuristics, goalSolution, currentSolution) {
+        const TRACE = currentStateHeuristics >= 1;
+        if (!Array.isArray(currentSolution[indexStack])) throw new Error(`The argument 'currentSolution[indexStack]' must be an Array: ${JSON.stringify(currentSolution[indexStack])}`);
+        if (!Array.isArray(tempStackList)) throw new Error(`The argument 'tempStackList' must be an Array: ${JSON.stringify(tempStackList)}`);
         if (!Array.isArray(goalSolution)) throw new Error(`The argument 'goalSolution' must be an Array`);
-        const newState = await Promise.all(currentStackList.filter(stack => stack != currentStack).map(stack => {
-            if (TRACEALL || TRACE) console.log('pushElementToExistingStacks.filter.map.pushElementsToStack(stack, block, currentStackList, currentStateHeuristics)'.blue, stack, block, JSON.stringify(currentStackList), currentStateHeuristics);
-            return HillClimbing.pushElementToStack(stack, block, currentStackList, currentStateHeuristics, goalSolution);
-        }));
-        if (TRACEALL || TRACE) console.log('pushElementToExistingStacks.newState'.yellow, JSON.stringify(newState));
-        return newState.filter(s=> s!=null)[0];
+        const currentStack = currentSolution[indexStack];
+        const newStates = []
+        for (let i = 0; i < tempStackList.length; i++) {
+            if (currentStack == tempStackList[i]) {
+                continue;
+            } else {
+                //adiciona na stack "i" pra fazer a avaliação
+                tempStackList[i].push(block);
+                const newStateHeuristics = await HillClimbing.getHeuristicsValue(tempStackList, goalSolution);
+                if (newStateHeuristics > currentStateHeuristics) {
+                    newStates.push(State.newState(State.cloneStackList(tempStackList), newStateHeuristics));
+                }
+                //remove na stack "i" pra voltar ao estado original
+                tempStackList[i].pop();
+            }
+        }
+
+        if (TRACEALL || TRACE) console.log('pushElementToExistingStacks.newState'.yellow, JSON.stringify(newStates));
+        return newStates.filter(s => s != null)[0];
     },
 
     pushElementToStack: async function (stack, block, currentStackList, currentStateHeuristics, goalSolution) {
-        const TRACE = true;
+        const TRACE = currentStateHeuristics >= 1;
         if (!Array.isArray(stack)) throw new Error(`The argument 'stack' must be an Array`);
         if (!Array.isArray(currentStackList) || !Array.isArray(currentStackList[0])) throw new Error(`The argument 'currentStackList' must be an Array of Arrays`);
         if (!Array.isArray(goalSolution)) throw new Error(`The argument 'goalSolution' must be an Array`);
